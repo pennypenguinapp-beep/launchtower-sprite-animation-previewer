@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprite Animation Previewer — LaunchTower</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #181c25;
+    --panel2: #1f2430;
+    --border: #2c3342;
+    --text: #e8ecf4;
+    --muted: #8b93a7;
+    --accent: #5b8cff;
+    --accent2: #3ddc97;
+    --danger: #ff5b6e;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header { margin-bottom: 20px; }
+  h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: .3px; }
+  h1 .brand { color: var(--accent); }
+  .sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .panel h2 {
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .drop {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 22px 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: .85rem;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    margin-bottom: 14px;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: rgba(91,140,255,.06); color: var(--text); }
+  .drop b { color: var(--accent); }
+  .row { margin-bottom: 12px; }
+  .row label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 5px; }
+  select, input[type=number], input[type=text] {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: .85rem;
+    outline: none;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: flex; gap: 6px; }
+  .seg button {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 7px 4px;
+    font-size: .78rem;
+    cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: .85rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 400; }
+  .btn.green { background: var(--accent2); color: #08281a; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .stage {
+    background: #0a0c11;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    min-height: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .stage .empty { color: var(--muted); font-size: .9rem; text-align: center; padding: 20px; }
+  .stage .empty .big { font-size: 2rem; margin-bottom: 8px; }
+  canvas#view { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .stagebar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .playbtn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--accent2);
+    color: #08281a;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .playbtn:hover { filter: brightness(1.1); }
+  .scrub { flex: 1; min-width: 140px; }
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 6px;
+    background: var(--panel2);
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .frameinfo { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+  .frameinfo b { color: var(--text); }
+  .zoomctl { display: flex; align-items: center; gap: 6px; }
+  .zoomctl button {
+    width: 28px; height: 28px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .zoomctl span { font-size: .78rem; color: var(--muted); min-width: 38px; text-align: center; }
+  .fpsrow { display: flex; align-items: center; gap: 8px; }
+  .fpsrow input { width: 64px; }
+  .strip {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .strip canvas {
+    width: 56px; height: 56px;
+    image-rendering: pixelated;
+    background: #0a0c10;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .strip canvas.cur { border-color: var(--accent2); }
+  .strip canvas:hover { border-color: var(--accent); }
+  .meta { font-size: .78rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .meta b { color: var(--text); }
+  .err { color: var(--danger); font-size: .8rem; margin-top: 8px; min-height: 1em; }
+  .hint { font-size: .72rem; color: var(--muted); margin-top: 6px; }
+  footer { margin-top: 22px; text-align: center; color: var(--muted); font-size: .75rem; }
+  footer a { color: var(--accent); text-decoration: none; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); cursor: pointer; user-select: none; }
+  .check input { accent-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sprite Animation Previewer <span class="brand">· LaunchTower</span></h1>
+    <div class="sub">Load a sprite sheet, choose your layout, and preview the animation frame-by-frame. Runs 100% in your browser — nothing is uploaded.</div>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Source</h2>
+      <div class="drop" id="drop">
+        <div class="big">🖼️</div>
+        Drop a sprite sheet here or <b>click to browse</b><br>
+        <span style="font-size:.72rem">PNG / JPG / WebP</span>
+      </div>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+
+      <div class="row">
+        <label>Layout</label>
+        <div class="seg" id="layoutSeg">
+          <button data-v="rows" class="on">Rows</button>
+          <button data-v="cols">Columns</button>
+        </div>
+      </div>
+
+      <div class="row pair">
+        <div>
+          <label>Frames / row</label>
+          <input type="number" id="framesRow" min="1" max="64" value="4">
+        </div>
+        <div>
+          <label>Rows</label>
+          <input type="number" id="rows" min="1" max="64" value="1">
+        </div>
+      </div>
+
+      <div class="row pair">
+        <div>
+          <label>Frame W (px)</label>
+          <input type="number" id="fw" min="1" value="32">
+        </div>
+        <div>
+          <label>Frame H (px)</label>
+          <input type="number" id="fh" min="1" value="32">
+        </div>
+      </div>
+
+      <div class="row pair">
+        <div>
+          <label>Margin (px)</label>
+          <input type="number" id="margin" min="0" value="0">
+        </div>
+        <div>
+          <label>Spacing (px)</label>
+          <input type="number" id="spacing" min="0" value="0">
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Animation</label>
+        <div class="seg" id="dirSeg">
+          <button data-v="fwd" class="on">Forward</button>
+          <button data-v="pingpong">Ping-pong</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="transparent" checked> Treat near-white as transparent (for white-background sheets)</label>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="grid" > Show frame grid on sheet</label>
+      </div>
+
+      <div class="err" id="err"></div>
+      <div class="hint">Tip: if frames look offset, nudge Margin/Spacing by 1px.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Preview</h2>
+      <div class="stage" id="stage">
+        <div class="empty" id="empty">
+          <div class="big">▶️</div>
+          Load a sprite sheet to start previewing
+        </div>
+        <canvas id="view" style="display:none"></canvas>
+      </div>
+
+      <div class="stagebar">
+        <button class="playbtn" id="play" title="Play / Pause">▶</button>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="0" value="0">
+        </div>
+        <div class="frameinfo">Frame <b id="fnum">–</b> / <b id="ftot">–</b></div>
+        <div class="fpsrow">
+          <span style="font-size:.78rem;color:var(--muted)">FPS</span>
+          <input type="number" id="fps" min="1" max="60" value="12">
+        </div>
+        <div class="zoomctl">
+          <button id="zout">−</button>
+          <span id="zval">8×</span>
+          <button id="zin">+</button>
+        </div>
+      </div>
+
+      <div class="strip" id="strip"></div>
+
+      <div class="meta" id="meta">No sheet loaded.</div>
+
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+        <button class="btn green" id="dlFrame" disabled>Download current frame (PNG)</button>
+        <button class="btn ghost" id="dlAll" disabled>Download all frames</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Built by <a href="https://pennypenguinapp-beep.github.io/">LaunchTower</a> · Free pixel-art toolkit · No data leaves your browser
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const drop=$("drop"), file=$("file"), err=$("err");
+  const view=$("view"), empty=$("empty"), stage=$("stage");
+  const scrub=$("scrub"), fnum=$("fnum"), ftot=$("ftot");
+  const play=$("play"), fps=$("fps"), strip=$("strip"), meta=$("meta");
+  const dlFrame=$("dlFrame"), dlAll=$("dlAll");
+  const zin=$("zin"), zout=$("zout"), zval=$("zval");
+
+  let img=null, frames=[], cur=0, playing=false, zoom=8, rafId=null, lastT=0;
+  let layout="rows", dir="fwd", pingIdx=0, pingDir=1;
+
+  drop.addEventListener("click", ()=>file.click());
+  drop.addEventListener("dragover", e=>{e.preventDefault(); drop.classList.add("over");});
+  drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
+  drop.addEventListener("drop", e=>{
+    e.preventDefault(); drop.classList.remove("over");
+    if(e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+  });
+  file.addEventListener("change", e=>{ if(e.target.files.length) loadFile(e.target.files[0]); });
+
+  function loadFile(f){
+    err.textContent="";
+    const url=URL.createObjectURL(f);
+    const im=new Image();
+    im.onload=()=>{
+      img=im;
+      $("empty").style.display="none";
+      view.style.display="block";
+      rebuild();
+      meta.innerHTML="Sheet: <b>"+im.naturalWidth+"×"+im.naturalHeight+"</b> · <b>"+frames.length+"</b> frames extracted";
+    };
+    im.onerror=()=>{ err.textContent="Could not decode that image. Try a PNG."; };
+    im.src=url;
+  }
+
+  function seg(id, cb){
+    const el=$(id);
+    el.querySelectorAll("button").forEach(b=>{
+      b.onclick=()=>{
+        el.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+        b.classList.add("on");
+        cb(b.dataset.v);
+      };
+    });
+  }
+  seg("layoutSeg", v=>{ layout=v; rebuild(); });
+  seg("dirSeg", v=>{ dir=v; pingIdx=0; pingDir=1; cur=0; render(); });
+
+  ["framesRow","rows","fw","fh","margin","spacing"].forEach(id=>{
+    $(id).addEventListener("input", debounce(rebuild, 180));
+  });
+  $("transparent").addEventListener("change", rebuild);
+  $("grid").addEventListener("change", rebuild);
+
+  function debounce(fn, ms){ let t; return ()=>{ clearTimeout(t); t=setTimeout(fn, ms); }; }
+
+  function rebuild(){
+    if(!img) return;
+    err.textContent="";
+    const fw=Math.max(1, parseInt($("fw").value)||32);
+    const fh=Math.max(1, parseInt($("fh").value)||32);
+    const m=Math.max(0, parseInt($("margin").value)||0);
+    const sp=Math.max(0, parseInt($("spacing").value)||0);
+    const fr=Math.max(1, parseInt($("framesRow").value)||4);
+    const rw=Math.max(1, parseInt($("rows").value)||1);
+    const trans=$("transparent").checked;
+
+    const W=img.naturalWidth, H=img.naturalHeight;
+    const src=document.createElement("canvas");
+    src.width=W; src.height=H;
+    const sctx=src.getContext("2d");
+    sctx.drawImage(img,0,0);
+
+    if(trans){
+      const d=sctx.getImageData(0,0,W,H);
+      const px=d.data;
+      for(let i=0;i<px.length;i+=4){
+        if(px[i]>245 && px[i+1]>245 && px[i+2]>245){ px[i+3]=0; }
+      }
+      sctx.putImageData(d,0,0);
+    }
+
+    frames=[];
+    for(let r=0;r<rw;r++){
+      for(let c=0;c<fr;c++){
+        const x=m + c*(fw+sp);
+        const y=m + r*(fh+sp);
+        if(x+fw>W || y+fh>H) continue;
+        const fc=document.createElement("canvas");
+        fc.width=fw; fc.height=fh;
+        const fctx=fc.getContext("2d");
+        fctx.imageSmoothingEnabled=false;
+        fctx.drawImage(src, x, y, fw, fh, 0, 0, fw, fh);
+        frames.push(fc);
+      }
+    }
+
+    if(frames.length===0){
+      err.textContent="No frames fit in the sheet with this layout. Reduce frame size or increase sheet area.";
+      view.style.display="none";
+      empty.style.display="block";
+      return;
+    }
+
+    strip.innerHTML="";
+    frames.forEach((f,i)=>{
+      const t=document.createElement("canvas");
+      t.width=56; t.height=56;
+      const tc=t.getContext("2d");
+      tc.imageSmoothingEnabled=false;
+      const scale=Math.min(56/f.width, 56/f.height);
+      const dw=f.width*scale, dh=f.height*scale;
+      tc.drawImage(f, (56-dw)/2, (56-dh)/2, dw, dh);
+      t.onclick=()=>{ cur=i; pingIdx=i; render(); };
+      t.title="Frame "+(i+1);
+      strip.appendChild(t);
+    });
+
+    cur=0; pingIdx=0; pingDir=1;
+    scrub.max=frames.length-1;
+    scrub.value=0;
+    render();
+  }
+
+  function render(){
+    if(!frames.length) return;
+    cur=Math.max(0, Math.min(cur, frames.length-1));
+    const f=frames[cur];
+    const dw=f.width*zoom, dh=f.height*zoom;
+    if(view.width!==dw) view.width=dw;
+    if(view.height!==dh) view.height=dh;
+    const ctx=view.getContext("2d");
+    ctx.imageSmoothingEnabled=false;
+    ctx.clearRect(0,0,dw,dh);
+    ctx.drawImage(f,0,0,dw,dh);
+    scrub.value=cur;
+    fnum.textContent=cur+1;
+    ftot.textContent=frames.length;
+    [...strip.children].forEach((c,i)=>c.classList.toggle("cur", i===cur));
+    dlFrame.disabled=false; dlAll.disabled=false;
+  }
+
+  function tick(t){
+    if(!playing) return;
+    const target=1000/(parseInt(fps.value)||12);
+    if(t-lastT>=target){
+      lastT=t;
+      if(dir==="fwd"){
+        cur=(cur+1)%frames.length;
+      } else {
+        pingIdx+=pingDir;
+        if(pingIdx>=frames.length){ pingIdx=frames.length-1; pingDir=-1; }
+        if(pingIdx<0){ pingIdx=0; pingDir=1; }
+        cur=pingIdx;
+      }
+      render();
+    }
+    rafId=requestAnimationFrame(tick);
+  }
+  play.onclick=()=>{
+    playing=!playing;
+    play.textContent=playing?"⏸":"▶";
+    if(playing){ lastT=performance.now(); rafId=requestAnimationFrame(tick); }
+    else if(rafId) cancelAnimationFrame(rafId);
+  };
+  scrub.oninput=()=>{ cur=parseInt(scrub.value)||0; pingIdx=cur; render(); };
+
+  function setZoom(z){
+    zoom=Math.max(1, Math.min(32, z));
+    zval.textContent=zoom+"×";
+    render();
+  }
+  zin.onclick=()=>setZoom(zoom+1);
+  zout.onclick=()=>setZoom(zoom-1);
+
+  dlFrame.onclick=()=>{
+    if(!frames[cur]) return;
+    const a=document.createElement("a");
+    a.download="frame_"+(cur+1)+".png";
+    a.href=frames[cur].toDataURL("image/png");
+    a.click();
+  };
+  dlAll.onclick=()=>{
+    frames.forEach((f,i)=>{
+      const a=document.createElement("a");
+      a.download="frame_"+(i+1)+".png";
+      a.href=f.toDataURL("image/png");
+      a.click();
+    });
+  };
+
+  document.addEventListener("keydown", e=>{
+    if(e.target.tagName==="INPUT") return;
+    if(e.code==="Space"){ e.preventDefault(); play.click(); }
+    if(e.code==="ArrowRight"){ cur=Math.min(cur+1, frames.length-1); pingIdx=cur; render(); }
+    if(e.code==="ArrowLeft"){ cur=Math.max(cur-1, 0); pingIdx=cur; render(); }
+  });
+})();
+</script>
+</body>
+</html>
