@@ -215,6 +215,7 @@
         <span style="font-size:.72rem">PNG / JPG / WebP</span>
       </div>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <button class="btn ghost" id="loadExample" style="width:100%; margin-bottom:14px;">✨ Load example sheet</button>
 
       <div class="row">
         <label>Layout</label>
@@ -342,6 +343,50 @@
     if(e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
   });
   file.addEventListener("change", e=>{ if(e.target.files.length) loadFile(e.target.files[0]); });
+
+  function loadExample(){
+    err.textContent="";
+    // 4 frames of 16x16, one row: a bouncing pixel character
+    const c=document.createElement("canvas");
+    c.width=64; c.height=16;
+    const x=c.getContext("2d");
+    x.fillStyle="#0a0c11"; x.fillRect(0,0,64,16);
+    const colors=["#5b8cff","#3ddc97","#ffb45b","#ff5b6e"];
+    for(let f=0; f<4; f++){
+      const ox=f*16;
+      const bounce=[0,2,1,0][f];
+      // body
+      x.fillStyle=colors[f];
+      x.fillRect(ox+5, 4-bounce, 6, 8);
+      // eyes
+      x.fillStyle="#0a0c11";
+      x.fillRect(ox+6, 5-bounce, 1, 2);
+      x.fillRect(ox+9, 5-bounce, 1, 2);
+      // feet (walk cycle)
+      x.fillStyle=colors[f];
+      if(f===0){ x.fillRect(ox+5,12,2,2); x.fillRect(ox+9,12,2,2); }
+      if(f===1){ x.fillRect(ox+4,12,2,2); x.fillRect(ox+10,12,2,2); }
+      if(f===2){ x.fillRect(ox+5,12,2,2); x.fillRect(ox+9,12,2,2); }
+      if(f===3){ x.fillRect(ox+4,12,2,2); x.fillRect(ox+10,12,2,2); }
+      // ground shadow
+      x.fillStyle="rgba(255,255,255,.12)";
+      x.fillRect(ox+4, 14, 8, 1);
+    }
+    const url=c.toDataURL("image/png");
+    const im=new Image();
+    im.onload=()=>{
+      img=im;
+      $("empty").style.display="none";
+      view.style.display="block";
+      // sensible defaults for the 16x16 example
+      $("fw").value=16; $("fh").value=16; $("framesRow").value=4; $("rows").value=1;
+      $("margin").value=0; $("spacing").value=0;
+      rebuild();
+      meta.innerHTML="Sheet: <b>"+im.naturalWidth+"×"+im.naturalHeight+"</b> · <b>"+frames.length+"</b> frames extracted (example)";
+    };
+    im.src=url;
+  }
+  $("loadExample").addEventListener("click", loadExample);
 
   function loadFile(f){
     err.textContent="";
