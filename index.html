@@ -215,7 +215,10 @@
         <span style="font-size:.72rem">PNG / JPG / WebP</span>
       </div>
       <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
-      <button class="btn ghost" id="loadExample" style="width:100%; margin-bottom:14px;">✨ Load example sheet</button>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn green" id="loadExample" style="flex:1;">✨ Load example</button>
+      </div>
+      <div class="hint">No sheet handy? The example is a 128×32 walk-cycle generated in your browser.</div>
 
       <div class="row">
         <label>Layout</label>
@@ -344,49 +347,66 @@
   });
   file.addEventListener("change", e=>{ if(e.target.files.length) loadFile(e.target.files[0]); });
 
-  function loadExample(){
-    err.textContent="";
-    // 4 frames of 16x16, one row: a bouncing pixel character
+  // --- Load example: generate a 128x32 walk-cycle sheet in code ---
+  function makeExampleSheet(){
+    const W=128, H=32, N=4;
     const c=document.createElement("canvas");
-    c.width=64; c.height=16;
+    c.width=W; c.height=H;
     const x=c.getContext("2d");
-    x.fillStyle="#0a0c11"; x.fillRect(0,0,64,16);
-    const colors=["#5b8cff","#3ddc97","#ffb45b","#ff5b6e"];
-    for(let f=0; f<4; f++){
-      const ox=f*16;
-      const bounce=[0,2,1,0][f];
-      // body
-      x.fillStyle=colors[f];
-      x.fillRect(ox+5, 4-bounce, 6, 8);
-      // eyes
-      x.fillStyle="#0a0c11";
-      x.fillRect(ox+6, 5-bounce, 1, 2);
-      x.fillRect(ox+9, 5-bounce, 1, 2);
-      // feet (walk cycle)
-      x.fillStyle=colors[f];
-      if(f===0){ x.fillRect(ox+5,12,2,2); x.fillRect(ox+9,12,2,2); }
-      if(f===1){ x.fillRect(ox+4,12,2,2); x.fillRect(ox+10,12,2,2); }
-      if(f===2){ x.fillRect(ox+5,12,2,2); x.fillRect(ox+9,12,2,2); }
-      if(f===3){ x.fillRect(ox+4,12,2,2); x.fillRect(ox+10,12,2,2); }
-      // ground shadow
-      x.fillStyle="rgba(255,255,255,.12)";
-      x.fillRect(ox+4, 14, 8, 1);
+    x.imageSmoothingEnabled=false;
+    const skin="#f2c9a0", shirt="#5b8cff", pants="#2c3342", boot="#1a1e28";
+    for(let i=0;i<N;i++){
+      const ox=i*32;
+      // leg swing
+      const swing=[-4,0,4,0][i];
+      // back leg
+      x.fillStyle=pants;
+      x.fillRect(ox+13+swing, 20, 4, 7);
+      x.fillStyle=boot;
+      x.fillRect(ox+12+swing, 27, 5, 3);
+      // front leg
+      x.fillStyle=pants;
+      x.fillRect(ox+15-swing, 20, 4, 7);
+      x.fillStyle=boot;
+      x.fillRect(ox+15-swing, 27, 5, 3);
+      // torso
+      x.fillStyle=shirt;
+      x.fillRect(ox+11, 11, 8, 9);
+      // arms
+      const arm=[-3,0,3,0][i];
+      x.fillStyle=shirt;
+      x.fillRect(ox+9+arm, 12, 2, 6);
+      x.fillRect(ox+19-arm, 12, 2, 6);
+      x.fillStyle=skin;
+      x.fillRect(ox+9+arm, 18, 2, 2);
+      x.fillRect(ox+19-arm, 18, 2, 2);
+      // head
+      x.fillStyle=skin;
+      x.fillRect(ox+11, 3, 8, 7);
+      // hair
+      x.fillStyle="#3a2a1a";
+      x.fillRect(ox+11, 2, 8, 2);
+      // eye
+      x.fillStyle="#1a1e28";
+      x.fillRect(ox+16, 6, 1, 1);
     }
-    const url=c.toDataURL("image/png");
+    return c.toDataURL("image/png");
+  }
+  $("loadExample").addEventListener("click", ()=>{
+    err.textContent="";
     const im=new Image();
     im.onload=()=>{
       img=im;
       $("empty").style.display="none";
       view.style.display="block";
-      // sensible defaults for the 16x16 example
-      $("fw").value=16; $("fh").value=16; $("framesRow").value=4; $("rows").value=1;
+      $("fw").value=32; $("fh").value=32;
+      $("framesRow").value=4; $("rows").value=1;
       $("margin").value=0; $("spacing").value=0;
       rebuild();
-      meta.innerHTML="Sheet: <b>"+im.naturalWidth+"×"+im.naturalHeight+"</b> · <b>"+frames.length+"</b> frames extracted (example)";
+      meta.innerHTML="Sheet: <b>128×32</b> · <b>"+frames.length+"</b> frames extracted · <i>example</i>";
     };
-    im.src=url;
-  }
-  $("loadExample").addEventListener("click", loadExample);
+    im.src=makeExampleSheet();
+  });
 
   function loadFile(f){
     err.textContent="";
